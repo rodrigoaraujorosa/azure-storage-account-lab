@@ -1,0 +1,17 @@
+# Segredos e variáveis locais
+.env
+*.local.json
+
+# Dados locais (ver docs/project-structure.md do Ogma)
+data/local/*
+!data/local/.gitkeep
+
+# Azure / Bicep
+*.azurecli.log
+.azure/
+
+# Editor e SO
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
