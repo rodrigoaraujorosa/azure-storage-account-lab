@@ -75,6 +75,21 @@ Todos levam a tag `repo=azure-storage-account-lab`. Os nomes de Storage não ace
 - **Blocos em vez de um único PUT:** um Put Blob aceitaria 400 MB de uma vez, mas uma falha de rede perderia tudo. Em blocos há progresso, paralelismo e nova tentativa só do bloco que falhou.
 - **APIM sem subscription key:** a chave ficaria exposta no JavaScript do navegador. Em produção, a autenticação seria um token do Entra ID validado com `validate-jwt`.
 
+### 🔁 Do lab para o cenário real (microserviço Node no AKS)
+
+No cenário real, quem emite a SAS é um microserviço em Node.js rodando no AKS. Neste lab, a **Function faz o papel desse microserviço**, com o mesmo contrato: `POST /sas` recebe `{fileName, size, contentType}` e devolve `{uploadUrl, blobName, expiresOn}`. Para o frontend, o APIM e o Storage, não faz diferença quem está atrás.
+
+| Aspecto | No lab (Function) | No cenário real (Node no AKS) |
+| --- | --- | --- |
+| Identidade que assina a SAS | Managed identity da Function App | **Workload Identity** do AKS: a service account do pod federada com uma managed identity do Entra ID |
+| Papéis | *Storage Blob Delegator* na conta + *Storage Blob Data Contributor* no contêiner | Os mesmos, atribuídos à identidade do pod |
+| SDK | `azure-storage-blob` (Python) | `@azure/storage-blob` + `@azure/identity`: `getUserDelegationKey()` e `generateBlobSASQueryParameters()` com `DefaultAzureCredential` |
+| APIM → backend | Function key num named value secreto | Ingress do AKS, de preferência em rede privada (APIM integrado à VNet), e/ou token do Entra ID ou mTLS |
+| Cold start | 0,9–1,9 s depois de alguns minutos sem uso | Não há: os pods ficam rodando |
+| Cache da user delegation key | Em memória, por instância | O mesmo; com várias réplicas, cada pod tem a sua chave, sem problema |
+
+O que o lab validou continua valendo para o AKS: o fluxo, a SAS de um único blob só com `create` + `write`, a conta sem shared key, o CORS e o upload em blocos. O cold start é uma limitação da Function e não se aplica ao AKS.
+
 ## 🚀 Como rodar
 
 ### Pré-requisitos
@@ -258,29 +273,24 @@ bash scripts/cleanup.sh
 ├── scripts/                 # Azure CLI: deploy, smoke test, environment do Postman e limpeza
 ├── postman/                 # collection do Postman
 ├── tests/unit/              # pytest das regras do microserviço
-├── docs/portal.md           # passo a passo pelo Portal Azure
+├── docs/                    # portal.md (passo a passo pelo Portal) e glossary.md
 └── data/local/              # arquivos de teste (ignorados pelo git)
 ```
 
 ## 📖 Glossário
 
+Os principais termos. A lista completa, com 21 termos, está em [docs/glossary.md](docs/glossary.md).
+
 | Termo | O que é |
 | --- | --- |
+| AKS | Azure Kubernetes Service: Kubernetes gerenciado do Azure; no cenário real, roda o microserviço Node.js que emite a SAS |
 | APIM | Azure API Management: gateway que publica APIs e aplica policies (CORS, autenticação, limites) antes do backend |
-| Blob | Arquivo guardado no Azure Blob Storage, dentro de um contêiner |
-| Bloco (*block*) | Pedaço de um blob enviado com Put Block; o Put Block List junta os blocos, na ordem, no blob final |
 | CORS | Cross-Origin Resource Sharing: regras que dizem de quais sites o navegador pode chamar um serviço |
-| Entra ID | Microsoft Entra ID, o serviço de identidade da Microsoft (antigo Azure Active Directory) |
-| Flex Consumption | Plano do Azure Functions cobrado por uso, que escala até zero |
-| Function key | Chave exigida para chamar uma Function com nível de autorização `function`; aqui só o APIM a conhece |
 | Identidade gerenciada (*managed identity*) | Identidade do Entra ID criada para um recurso do Azure, sem senha nem chave para guardar |
-| Named value | Variável do APIM usada nas policies; pode ser secreta, como a function key |
-| Preflight | Requisição `OPTIONS` que o navegador faz antes da chamada real para conferir o CORS |
-| Resource group | Grupo de recursos do Azure; apagar o grupo apaga tudo dentro dele |
 | SAS | Shared Access Signature: URL assinada que dá acesso temporário e limitado a um recurso do Storage |
 | Shared key | Chave de acesso da conta de armazenamento, que dá acesso total; neste lab fica desabilitada |
-| Static website | Recurso do Storage que serve arquivos do contêiner `$web` como site estático |
 | User delegation SAS | SAS assinada com uma chave obtida via Entra ID (*user delegation key*), em vez da shared key |
+| Workload Identity | Recurso do AKS que associa a service account de um pod a uma identidade do Entra ID, sem segredo no cluster |
 
 ## 📄 Licença
 
