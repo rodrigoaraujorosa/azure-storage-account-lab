@@ -94,7 +94,13 @@
               "raw": "{\n  \"fileName\": \"{{fileName}}\",\n  \"size\": {{fileSize}},\n  \"contentType\": \"{{contentType}}\"\n}"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             },
             "description": "Mesmo pedido que o frontend faz. Ajuste `fileName` e `fileSize` (bytes) para o arquivo que vai enviar."
           }
@@ -140,7 +146,13 @@
               "raw": "{\n  \"fileName\": \"{{fileName}}\",\n  \"size\": {{fileSize}},\n  \"contentType\": \"{{contentType}}\"\n}"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             },
             "description": ""
           }
@@ -188,7 +200,10 @@
               "file": {}
             },
             "url": {
-              "raw": "{{uploadUrl}}"
+              "raw": "{{uploadUrl}}",
+              "host": [
+                "{{uploadUrl}}"
+              ]
             },
             "description": "Envia o arquivo inteiro num único PUT. **Escolha o arquivo na aba Body (binary).**\n\nO frontend usa blocos; o Postman não divide o arquivo, então aqui vai de uma vez. Um Put Blob aceita até 5000 MiB."
           }
@@ -221,7 +236,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{uploadUrl}}"
+              "raw": "{{uploadUrl}}",
+              "host": [
+                "{{uploadUrl}}"
+              ]
             }
           }
         },
@@ -253,7 +271,10 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{uploadUrl}}"
+              "raw": "{{uploadUrl}}",
+              "host": [
+                "{{uploadUrl}}"
+              ]
             }
           }
         }
@@ -299,7 +320,13 @@
               "raw": "{\n  \"fileName\": \"{{blockFileName}}\",\n  \"size\": {{blockFileSize}},\n  \"contentType\": \"text/plain\"\n}"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             },
             "description": ""
           }
@@ -336,7 +363,10 @@
               "raw": "Olá do Postman, "
             },
             "url": {
-              "raw": "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAw"
+              "raw": "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAw",
+              "host": [
+                "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAw"
+              ]
             },
             "description": "`blockid` = base64 de `block-000000` (YmxvY2stMDAwMDAw). Todos os IDs de um blob têm o mesmo tamanho."
           }
@@ -373,7 +403,10 @@
               "raw": "em dois blocos!"
             },
             "url": {
-              "raw": "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAx"
+              "raw": "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAx",
+              "host": [
+                "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAx"
+              ]
             }
           }
         },
@@ -418,7 +451,10 @@
               "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<BlockList>\n  <Latest>YmxvY2stMDAwMDAw</Latest>\n  <Latest>YmxvY2stMDAwMDAx</Latest>\n</BlockList>"
             },
             "url": {
-              "raw": "{{uploadUrl}}&comp=blocklist"
+              "raw": "{{uploadUrl}}&comp=blocklist",
+              "host": [
+                "{{uploadUrl}}&comp=blocklist"
+              ]
             }
           }
         }
@@ -464,7 +500,13 @@
               "raw": "{\n  \"fileName\": \"grande.bin\",\n  \"size\": {{tooBig}}\n}"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             }
           }
         },
@@ -494,7 +536,13 @@
               "raw": "{\n  \"fileName\": \"\",\n  \"size\": \"muito\"\n}"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             }
           }
         },
@@ -524,7 +572,13 @@
               "raw": "qualquer coisa"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             }
           }
         },
@@ -554,7 +608,15 @@
               "raw": "{\n  \"fileName\": \"x.bin\",\n  \"size\": 1\n}"
             },
             "url": {
-              "raw": "https://{{functionHost}}/api/sas"
+              "raw": "https://{{functionHost}}/api/sas",
+              "protocol": "https",
+              "host": [
+                "{{functionHost}}"
+              ],
+              "path": [
+                "api",
+                "sas"
+              ]
             }
           }
         },
@@ -589,7 +651,13 @@
               }
             ],
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             }
           }
         },
@@ -624,7 +692,13 @@
               }
             ],
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             }
           }
         },
@@ -660,7 +734,19 @@
               }
             ],
             "url": {
-              "raw": "https://{{storageAccount}}.blob.core.windows.net/uploads/qualquer.bin"
+              "raw": "https://{{storageAccount}}.blob.core.windows.net/uploads/qualquer.bin",
+              "protocol": "https",
+              "host": [
+                "{{storageAccount}}",
+                "blob",
+                "core",
+                "windows",
+                "net"
+              ],
+              "path": [
+                "uploads",
+                "qualquer.bin"
+              ]
             }
           }
         },
@@ -690,7 +776,19 @@
               }
             ],
             "url": {
-              "raw": "https://{{storageAccount}}.blob.core.windows.net/uploads/qualquer.bin"
+              "raw": "https://{{storageAccount}}.blob.core.windows.net/uploads/qualquer.bin",
+              "protocol": "https",
+              "host": [
+                "{{storageAccount}}",
+                "blob",
+                "core",
+                "windows",
+                "net"
+              ],
+              "path": [
+                "uploads",
+                "qualquer.bin"
+              ]
             }
           }
         },
@@ -721,7 +819,13 @@
               "raw": "{\n  \"fileName\": \"declarado-1kib.bin\",\n  \"size\": 1024\n}"
             },
             "url": {
-              "raw": "{{apimBaseUrl}}/sas"
+              "raw": "{{apimBaseUrl}}/sas",
+              "host": [
+                "{{apimBaseUrl}}"
+              ],
+              "path": [
+                "sas"
+              ]
             },
             "description": "Primeira parte do teste de limite: o pedido declara 1 KiB."
           }
@@ -778,7 +882,10 @@
               "raw": "{{bigBody}}"
             },
             "url": {
-              "raw": "{{uploadUrl}}"
+              "raw": "{{uploadUrl}}",
+              "host": [
+                "{{uploadUrl}}"
+              ]
             },
             "description": "Segunda parte: confirma que o limite do microserviço vale para o pedido, não para o upload."
           }
