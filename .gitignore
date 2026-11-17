@@ -33,3 +33,6 @@ web/config.js
 
 # Arquivos de teste grandes
 *.bin
+
+# Postman: environment gerado com os endereços do seu ambiente
+postman/*.postman_environment.json

@@ -130,7 +130,22 @@ O passo a passo, com os mesmos recursos e configurações, está em **[docs/port
 
    A tela mostra o tempo da SAS, o tempo de upload, a vazão e o nome do blob. Mude o tamanho do bloco e o paralelismo para comparar.
 
-3. **Conferir o blob** (você recebeu *Storage Blob Data Contributor* no contêiner no `02-storage.sh`):
+3. **Pelo Postman:** gere o environment com os endereços do seu deploy e importe os dois arquivos de `postman/` (*Import* no Postman).
+
+   ```bash
+   bash scripts/postman-env.sh
+   ```
+
+   | Pasta | O que testa |
+   | --- | --- |
+   | 1 · Pedir SAS | Frontend → APIM → Function: `201`, SAS de um blob, `sp=cw`, `spr=https`, user delegation, resposta em menos de 1 s |
+   | 2 · Upload direto | Put Blob do arquivo inteiro (escolha o arquivo no *Body → binary*) e confirma que a SAS não lê nem apaga (`403`) |
+   | 3 · Upload em blocos | Put Block × 2 + Put Block List: o mesmo mecanismo do frontend, com blocos pequenos |
+   | 4 · Validações e segurança | Limite de tamanho (`400`), corpo inválido (`400`), Content-Type errado (`415`), Function sem chave (`401`), CORS no APIM e no Storage, e que a SAS **não** limita o tamanho enviado |
+
+   Rode pasta por pasta (ou *Run collection*). Cada pasta pede a própria SAS no primeiro request. O Postman não divide o arquivo em blocos, então na pasta 2 o arquivo vai num único PUT; a vazão em blocos se mede pelo frontend.
+
+4. **Conferir o blob** (você recebeu *Storage Blob Data Contributor* no contêiner no `02-storage.sh`):
 
    ```bash
    source .env
@@ -196,7 +211,8 @@ bash scripts/cleanup.sh
 ├── src/sas_service/         # Function App (Python): function_app.py, sas_issuer.py, sas_logic.py
 ├── web/                     # frontend estático (HTML + JS sem framework)
 ├── infra/apim/              # policy da API no APIM
-├── scripts/                 # Azure CLI: deploy, smoke test e limpeza
+├── scripts/                 # Azure CLI: deploy, smoke test, environment do Postman e limpeza
+├── postman/                 # collection do Postman
 ├── tests/unit/              # pytest das regras do microserviço
 ├── docs/portal.md           # passo a passo pelo Portal Azure
 └── data/local/              # arquivos de teste (ignorados pelo git)

@@ -1,0 +1,789 @@
+{
+  "info": {
+    "name": "azure-storage-account-lab",
+    "description": "Testes do lab azure-storage-account-lab: SAS pelo APIM e upload direto no Blob Storage.\n\n1. Importe também `postman/azure-storage-account-lab.postman_environment.json`, gerado por `bash scripts/postman-env.sh`, ou preencha as variáveis da collection.\n2. Rode as pastas em ordem. Cada pasta pede a própria SAS no primeiro request.\n3. Em **2 · Upload direto**, escolha o arquivo no body (binary) do request *Put Blob*.\n\nO arquivo nunca passa pelo APIM: só o pedido da SAS.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "apimBaseUrl",
+      "value": "https://<apim>.azure-api.net/uploads"
+    },
+    {
+      "key": "frontendOrigin",
+      "value": "https://<stasalweb...>.z15.web.core.windows.net"
+    },
+    {
+      "key": "storageAccount",
+      "value": "<stasalup...>"
+    },
+    {
+      "key": "functionHost",
+      "value": "<func-...>.azurewebsites.net"
+    },
+    {
+      "key": "fileName",
+      "value": "teste-400mb.bin"
+    },
+    {
+      "key": "fileSize",
+      "value": "419430400"
+    },
+    {
+      "key": "contentType",
+      "value": "application/octet-stream"
+    },
+    {
+      "key": "maxUploadMb",
+      "value": "400"
+    },
+    {
+      "key": "uploadUrl",
+      "value": ""
+    },
+    {
+      "key": "blobName",
+      "value": ""
+    },
+    {
+      "key": "blockFileName",
+      "value": "blocos.txt"
+    },
+    {
+      "key": "blockFileSize",
+      "value": "32"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 · Pedir SAS (Frontend → APIM → Function)",
+      "item": [
+        {
+          "name": "Pedir SAS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('uploadUrl', body.uploadUrl);",
+                  "pm.collectionVariables.set('blobName', body.blobName);",
+                  "const qs = Object.fromEntries(body.uploadUrl.split('?')[1].split('&').map(p => p.split('=')));",
+                  "pm.test('SAS de um único blob (sr=b)', () => pm.expect(qs.sr).to.eql('b'));",
+                  "pm.test('Só create + write (sp=cw)', () => pm.expect(qs.sp).to.eql('cw'));",
+                  "pm.test('Só HTTPS (spr=https)', () => pm.expect(qs.spr).to.eql('https'));",
+                  "pm.test('User delegation SAS (tem skoid)', () => pm.expect(qs).to.have.property('skoid'));",
+                  "pm.test('Resposta do APIM em menos de 1 s', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "console.log('blob:', body.blobName, '| expira:', body.expiresOn);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"{{fileName}}\",\n  \"size\": {{fileSize}},\n  \"contentType\": \"{{contentType}}\"\n}"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            },
+            "description": "Mesmo pedido que o frontend faz. Ajuste `fileName` e `fileSize` (bytes) para o arquivo que vai enviar."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 · Upload direto (Frontend → Storage)",
+      "item": [
+        {
+          "name": "Pedir SAS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('uploadUrl', body.uploadUrl);",
+                  "pm.collectionVariables.set('blobName', body.blobName);",
+                  "const qs = Object.fromEntries(body.uploadUrl.split('?')[1].split('&').map(p => p.split('=')));",
+                  "pm.test('SAS de um único blob (sr=b)', () => pm.expect(qs.sr).to.eql('b'));",
+                  "pm.test('Só create + write (sp=cw)', () => pm.expect(qs.sp).to.eql('cw'));",
+                  "pm.test('Só HTTPS (spr=https)', () => pm.expect(qs.spr).to.eql('https'));",
+                  "pm.test('User delegation SAS (tem skoid)', () => pm.expect(qs).to.have.property('skoid'));",
+                  "pm.test('Resposta do APIM em menos de 1 s', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "console.log('blob:', body.blobName, '| expira:', body.expiresOn);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"{{fileName}}\",\n  \"size\": {{fileSize}},\n  \"contentType\": \"{{contentType}}\"\n}"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Put Blob (arquivo inteiro)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const secs = pm.response.responseTime / 1000;",
+                  "console.log(`upload: ${secs.toFixed(1)} s`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-ms-blob-type",
+                "value": "BlockBlob"
+              },
+              {
+                "key": "Content-Type",
+                "value": "{{contentType}}"
+              }
+            ],
+            "body": {
+              "mode": "file",
+              "file": {}
+            },
+            "url": {
+              "raw": "{{uploadUrl}}"
+            },
+            "description": "Envia o arquivo inteiro num único PUT. **Escolha o arquivo na aba Body (binary).**\n\nO frontend usa blocos; o Postman não divide o arquivo, então aqui vai de uma vez. Um Put Blob aceita até 5000 MiB."
+          }
+        },
+        {
+          "name": "Ler o blob com a mesma SAS (deve falhar)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403: a SAS não tem permissão de leitura', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{uploadUrl}}"
+            }
+          }
+        },
+        {
+          "name": "Apagar o blob com a mesma SAS (deve falhar)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403: a SAS não tem permissão de exclusão', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{uploadUrl}}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 · Upload em blocos (como o frontend faz)",
+      "description": "Put Block + Put Block List com dois blocos pequenos de texto, para ver o mecanismo que o frontend usa.",
+      "item": [
+        {
+          "name": "Pedir SAS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('uploadUrl', body.uploadUrl);",
+                  "pm.collectionVariables.set('blobName', body.blobName);",
+                  "const qs = Object.fromEntries(body.uploadUrl.split('?')[1].split('&').map(p => p.split('=')));",
+                  "pm.test('SAS de um único blob (sr=b)', () => pm.expect(qs.sr).to.eql('b'));",
+                  "pm.test('Só create + write (sp=cw)', () => pm.expect(qs.sp).to.eql('cw'));",
+                  "pm.test('Só HTTPS (spr=https)', () => pm.expect(qs.spr).to.eql('https'));",
+                  "pm.test('User delegation SAS (tem skoid)', () => pm.expect(qs).to.have.property('skoid'));",
+                  "pm.test('Resposta do APIM em menos de 1 s', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "console.log('blob:', body.blobName, '| expira:', body.expiresOn);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"{{blockFileName}}\",\n  \"size\": {{blockFileSize}},\n  \"contentType\": \"text/plain\"\n}"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Put Block 1",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "Olá do Postman, "
+            },
+            "url": {
+              "raw": "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAw"
+            },
+            "description": "`blockid` = base64 de `block-000000` (YmxvY2stMDAwMDAw). Todos os IDs de um blob têm o mesmo tamanho."
+          }
+        },
+        {
+          "name": "Put Block 2",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "em dois blocos!"
+            },
+            "url": {
+              "raw": "{{uploadUrl}}&comp=block&blockid=YmxvY2stMDAwMDAx"
+            }
+          }
+        },
+        {
+          "name": "Put Block List (commit)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created: blob montado com os 2 blocos', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/xml"
+              },
+              {
+                "key": "x-ms-blob-content-type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<BlockList>\n  <Latest>YmxvY2stMDAwMDAw</Latest>\n  <Latest>YmxvY2stMDAwMDAx</Latest>\n</BlockList>"
+            },
+            "url": {
+              "raw": "{{uploadUrl}}&comp=blocklist"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 · Validações e segurança",
+      "item": [
+        {
+          "name": "SAS acima do limite (400)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const max = Number(pm.collectionVariables.get('maxUploadMb') || 400);",
+                  "pm.variables.set('tooBig', (max + 1) * 1048576);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400: o microserviço recusa', () => pm.response.to.have.status(400));",
+                  "pm.test('mensagem de erro', () => pm.expect(pm.response.json().error).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"grande.bin\",\n  \"size\": {{tooBig}}\n}"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            }
+          }
+        },
+        {
+          "name": "Corpo inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"\",\n  \"size\": \"muito\"\n}"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            }
+          }
+        },
+        {
+          "name": "Content-Type errado no APIM (415)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('415: o APIM barra antes da Function', () => pm.response.to.have.status(415));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "qualquer coisa"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            }
+          }
+        },
+        {
+          "name": "Function direto, sem a chave (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401: só o APIM, que tem a function key, chega na Function', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"x.bin\",\n  \"size\": 1\n}"
+            },
+            "url": {
+              "raw": "https://{{functionHost}}/api/sas"
+            }
+          }
+        },
+        {
+          "name": "Preflight CORS no APIM, origem do frontend (permitida)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Access-Control-Allow-Origin = origem do frontend', () =>",
+                  "  pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).to.eql(pm.variables.get('frontendOrigin')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{frontendOrigin}}"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "content-type"
+              }
+            ],
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            }
+          }
+        },
+        {
+          "name": "Preflight CORS no APIM, outra origem (negada)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sem Access-Control-Allow-Origin', () =>",
+                  "  pm.expect(pm.response.headers.has('Access-Control-Allow-Origin')).to.be.false);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://outro-site.example"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "content-type"
+              }
+            ],
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            }
+          }
+        },
+        {
+          "name": "Preflight CORS no Storage, origem do frontend (permitida)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('Access-Control-Allow-Origin presente', () =>",
+                  "  pm.expect(pm.response.headers.has('Access-Control-Allow-Origin')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{frontendOrigin}}"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "PUT"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "x-ms-blob-type,content-type"
+              }
+            ],
+            "url": {
+              "raw": "https://{{storageAccount}}.blob.core.windows.net/uploads/qualquer.bin"
+            }
+          }
+        },
+        {
+          "name": "Preflight CORS no Storage, outra origem (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403: origem fora da regra de CORS', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://outro-site.example"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "PUT"
+              }
+            ],
+            "url": {
+              "raw": "https://{{storageAccount}}.blob.core.windows.net/uploads/qualquer.bin"
+            }
+          }
+        },
+        {
+          "name": "Pedir SAS declarando 1 KiB",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('uploadUrl', pm.response.json().uploadUrl);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"declarado-1kib.bin\",\n  \"size\": 1024\n}"
+            },
+            "url": {
+              "raw": "{{apimBaseUrl}}/sas"
+            },
+            "description": "Primeira parte do teste de limite: o pedido declara 1 KiB."
+          }
+        },
+        {
+          "name": "Enviar 2 MiB com a SAS de 1 KiB (a SAS não limita tamanho)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('uploadUrl')) {",
+                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('bigBody', 'x'.repeat(2 * 1048576));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Resultado esperado: 201. A SAS não sabe o tamanho declarado ao microserviço.",
+                  "// Mitigação: evento BlobCreated (Event Grid) conferindo o tamanho e apagando o excedente.",
+                  "pm.test('201: o Storage aceita mais do que o declarado', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-ms-blob-type",
+                "value": "BlockBlob"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{bigBody}}"
+            },
+            "url": {
+              "raw": "{{uploadUrl}}"
+            },
+            "description": "Segunda parte: confirma que o limite do microserviço vale para o pedido, não para o upload."
+          }
+        }
+      ]
+    }
+  ]
+}
