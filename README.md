@@ -19,11 +19,11 @@ Upload de arquivos de 100 a 400 MB feito pelo navegador **direto no Azure Blob S
 - [x] O frontend obtém a SAS pelo caminho **Frontend → APIM → microserviço** em menos de 1 s. *Com a Function aquecida, sim; depois de alguns minutos parada, o cold start leva 0,9–1,9 s. Ver [Resultado](#-resultado).*
 - [x] O navegador envia 100–400 MB **direto ao Storage** em blocos (Put Block + Put Block List), com progresso e nova tentativa por bloco, sem nenhum byte do arquivo passar pelo APIM.
 - [x] A SAS é uma **user delegation SAS** assinada com a managed identity da Function: a conta de upload fica com **shared key desabilitada** e não existe chave da conta em lugar nenhum.
-- [ ] A SAS vale para **um único blob**, só com `create` + `write`, por 15 minutos: não lê, não lista, não apaga e não serve para outro nome. *Leitura negada (403) confirmada; exclusão e outros nomes ficam para o teste no Postman.*
+- [ ] A SAS vale para **um único blob**, só com `create` + `write`, por 15 minutos: não lê, não lista, não apaga e não serve para outro nome. *Leitura e exclusão negadas (403) confirmadas; usar a SAS em outro nome de blob ainda não foi testado.*
 - [x] O CORS da conta de upload aceita só a origem do frontend, e o do APIM também.
 - [ ] Qual combinação de tamanho de bloco e paralelismo dá a melhor vazão, e quanto tempo levam 100, 200 e 400 MB. *Tempos medidos; a comparação entre configurações ainda falta.*
 - [ ] O que acontece quando a SAS expira no meio do upload.
-- [ ] Limite de tamanho: o microserviço recusa o pedido acima de `MAX_UPLOAD_MB`, mas a SAS em si não limita o tamanho. Confirmar e registrar a mitigação.
+- [x] Limite de tamanho: o microserviço recusa o pedido acima de `MAX_UPLOAD_MB`, mas a SAS em si não limita o tamanho. *Confirmado: uma SAS pedida para 1 KiB aceitou 2 MiB. Mitigação em [Resultado](#-resultado).*
 
 ## 🏗️ Arquitetura
 
@@ -156,11 +156,13 @@ O passo a passo, com os mesmos recursos e configurações, está em **[docs/port
    | Pasta | O que testa |
    | --- | --- |
    | 1 · Pedir SAS | Frontend → APIM → Function: `201`, SAS de um blob, `sp=cw`, `spr=https`, user delegation, resposta em menos de 1 s |
-   | 2 · Upload direto | Put Blob do arquivo inteiro (escolha o arquivo no *Body → binary*) e confirma que a SAS não lê nem apaga (`403`) |
+   | 2 · Upload direto | Put Blob de um arquivo pequeno (escolha o arquivo no *Body → binary*; ex.: 10 MiB) e confirma que a SAS não lê nem apaga (`403`) |
    | 3 · Upload em blocos | Put Block × 2 + Put Block List: o mesmo mecanismo do frontend, com blocos pequenos |
    | 4 · Validações e segurança | Limite de tamanho (`400`), corpo inválido (`400`), Content-Type errado (`415`), Function sem chave (`401`), CORS no APIM e no Storage, e que a SAS **não** limita o tamanho enviado |
 
-   Rode pasta por pasta (ou *Run collection*). Cada pasta pede a própria SAS no primeiro request. O Postman não divide o arquivo em blocos, então na pasta 2 o arquivo vai num único PUT; a vazão em blocos se mede pelo frontend.
+   Rode pasta por pasta (ou *Run collection*). Cada pasta pede a própria SAS no primeiro request.
+
+   > O Postman recusou o arquivo de 400 MiB no body, e não divide o arquivo em blocos. Use um arquivo pequeno na pasta 2 (ajuste `fileName` e `fileSize`) e teste os arquivos de 100–400 MiB pelo frontend. No *Run collection*, o arquivo precisa ser escolhido também na tela do Runner; sem ele, o Put Blob falha de propósito, porque o corpo vazio criaria um blob de 0 byte com status 201.
 
 4. **Conferir o blob** (você recebeu *Storage Blob Data Contributor* no contêiner no `02-storage.sh`):
 
@@ -222,6 +224,32 @@ Como foi medido: **SAS (Function)** é a duração da requisição no Applicatio
 | Preflight no Storage com a origem do frontend | 200 | ✅ 200 |
 | Preflight no Storage com outra origem | 403 | ✅ 403 |
 
+Fontes: `scripts/smoke-test.sh` e chamadas `curl` de preflight.
+
+### Collection do Postman
+
+Execução pelo *Run collection* do Postman (17/11/2026, 23:34 no horário de Brasília): **36 testes, 35 passaram e 1 falhou**, sem erros. O conteúdo dos blobs foi conferido depois no Storage.
+
+| Teste | Esperado | Obtido |
+| --- | --- | --- |
+| SAS de um blob (`sr=b`), só `create` + `write` (`sp=cw`), só HTTPS, user delegation (`skoid`) | Os quatro | ✅ nas três SAS da execução |
+| Resposta do APIM em menos de 1 s | < 1.000 ms | ❌ **4.270 ms** no primeiro pedido (cold start); ✅ 149–161 ms nos seguintes |
+| Ler o blob com a SAS | 403 | ✅ 403 |
+| Apagar o blob com a SAS | 403 | ✅ 403 |
+| Put Block × 2 + Put Block List | 201 e blob montado | ✅ 201; blob de 32 bytes com os dois blocos |
+| SAS acima do limite / corpo inválido | 400 | ✅ 400 / 400 |
+| Content-Type errado no APIM | 415 | ✅ 415 |
+| Function chamada direto, sem a chave | 401 | ✅ 401 |
+| Preflight no APIM com a origem do frontend / outra origem | Com / sem `Access-Control-Allow-Origin` | ✅ / ✅ |
+| Preflight no Storage com a origem do frontend / outra origem | 200 / 403 | ✅ / ✅ |
+| Enviar mais do que o declarado com a SAS | 201 (a SAS não limita) | ✅ SAS pedida para **1 KiB** gravou um blob de **2 MiB** |
+| Put Blob de 400 MiB | 201 com o arquivo | ⚠️ Não validado: veja abaixo |
+
+Duas falhas da própria collection apareceram nessa execução e já foram corrigidas:
+
+- **Put Blob sem arquivo:** no *Run collection*, o arquivo não estava escolhido. O Postman mandou o corpo vazio, e o Storage aceitou com 201, criando um blob `teste-400mb.bin` de **0 byte**. Agora o request falha quando não há arquivo. Enviado à mão, o Postman recusou o arquivo de 400 MiB; arquivos grandes ficam com o frontend.
+- **Upload maior que o declarado:** com 2 MiB no corpo, o Runner não mostrou a resposta nem registrou o teste, embora o blob tenha sido gravado. O teste passou a usar 64 KiB.
+
 **O que funcionou**
 
 - O fluxo completo: o APIM trafega só o JSON da SAS, e 100–400 MiB vão do navegador direto ao Storage, em blocos.
@@ -231,7 +259,9 @@ Como foi medido: **SAS (Function)** é a duração da requisição no Applicatio
 
 **O que não funcionou ou ficou abaixo do esperado**
 
-- **Cold start da Function:** com a instância aquecida, a SAS sai em 9–14 ms; depois de 2–5 minutos sem uso, o Flex Consumption volta a zero e a primeira chamada leva 0,9–1,9 s. Para ficar sempre abaixo de 1 s, seria preciso configurar instâncias *always ready* no Flex Consumption, que têm custo fixo.
+- **Cold start da Function e do APIM:** com tudo aquecido, a SAS sai em 9–14 ms na Function e em ~150 ms de ponta a ponta pelo APIM. Depois de alguns minutos sem uso, a primeira chamada leva 0,9–1,9 s só na Function e 4,3 s de ponta a ponta. Depois de cerca de meia hora parado, chegou a **1 min 23 s** (medido com o Newman), porque o APIM Consumption e a Function partiram a frio juntos. Para ficar sempre abaixo de 1 s, seria preciso um tier do APIM sem cold start e instâncias *always ready* na Function, ambos com custo fixo. No cenário real com AKS, a Function sai do caminho; o APIM continua.
+- **SAS não limita o tamanho:** confirmado. A mitigação é validar depois do upload: um evento `BlobCreated` (Event Grid) dispara uma verificação que compara o tamanho do blob com o declarado e apaga ou coloca em quarentena o que passar do limite.
+- **Postman para arquivos grandes:** recusou o arquivo de 400 MiB e não envia em blocos. Serve para os testes de contrato e segurança; os uploads de 100–400 MiB ficam com o frontend.
 - **Vazão:** ficou em ~1,7–2,3 MiB/s (14–19 Mbit/s), provavelmente o limite de upload da conexão de origem, e não do Storage. A comparação entre tamanhos de bloco e paralelismo ainda falta.
 - **Deploy no Git Bash do Windows:** `az`, `zip` e `curl` são executáveis Windows e não entendem caminhos `/c/...` quando a conversão do MSYS está desligada. Corrigido nos scripts com `cygpath -w`.
 - **`az functionapp show` no Flex Consumption** (CLI 2.93) não traz `defaultHostName` no topo da resposta. Corrigido lendo o host do recurso ARM.
@@ -246,7 +276,7 @@ Como foi medido: **SAS (Function)** é a duração da requisição no Applicatio
 
 **Ainda falta**
 
-- Testes da collection do Postman: exclusão com a SAS, CORS e a confirmação de que a SAS não limita o tamanho enviado.
+- Usar a SAS de um blob para gravar em outro nome (esperado: 403).
 - Comparar tamanhos de bloco e paralelismo (ex.: 16 MiB × 8) e testar a expiração da SAS no meio do upload.
 
 ## 💸 Custos e limpeza

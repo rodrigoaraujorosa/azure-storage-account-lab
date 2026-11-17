@@ -23,11 +23,11 @@
     },
     {
       "key": "fileName",
-      "value": "teste-400mb.bin"
+      "value": "teste-10mb.bin"
     },
     {
       "key": "fileSize",
-      "value": "419430400"
+      "value": "10485760"
     },
     {
       "key": "contentType",
@@ -167,6 +167,11 @@
                 "exec": [
                   "if (!pm.collectionVariables.get('uploadUrl')) {",
                   "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
+                  "}",
+                  "// Sem arquivo, o Postman manda o corpo vazio e o Storage cria um blob de 0 byte (201).",
+                  "const file = pm.request.body && pm.request.body.file;",
+                  "if (!file || !file.src) {",
+                  "  throw new Error('Escolha o arquivo em Body → binary (no Runner, também na tela do Runner).');",
                   "}"
                 ]
               }
@@ -177,6 +182,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const file = pm.request.body && pm.request.body.file;",
+                  "pm.test('Arquivo escolhido no Body (binary)', () => pm.expect(file && file.src).to.be.ok);",
                   "const secs = pm.response.responseTime / 1000;",
                   "console.log(`upload: ${secs.toFixed(1)} s`);"
                 ]
@@ -205,7 +212,7 @@
                 "{{uploadUrl}}"
               ]
             },
-            "description": "Envia o arquivo inteiro num único PUT. **Escolha o arquivo na aba Body (binary).**\n\nO frontend usa blocos; o Postman não divide o arquivo, então aqui vai de uma vez. Um Put Blob aceita até 5000 MiB."
+            "description": "Envia o arquivo inteiro num único PUT. **Escolha o arquivo na aba Body (binary).**\n\nUse um arquivo pequeno (ex.: 10 MiB) e ajuste `fileName` e `fileSize`. O Postman recusou o arquivo de 400 MiB; os arquivos de 100–400 MiB são testados pelo frontend, que envia em blocos."
           }
         },
         {
@@ -831,7 +838,7 @@
           }
         },
         {
-          "name": "Enviar 2 MiB com a SAS de 1 KiB (a SAS não limita tamanho)",
+          "name": "Enviar 64 KiB com a SAS de 1 KiB (a SAS não limita tamanho)",
           "event": [
             {
               "listen": "prerequest",
@@ -839,17 +846,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "if (!pm.collectionVariables.get('uploadUrl')) {",
-                  "  throw new Error('Rode antes o pedido de SAS desta pasta.');",
-                  "}"
-                ]
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.variables.set('bigBody', 'x'.repeat(2 * 1048576));"
+                  "  throw new Error('Rode antes o pedido de SAS declarando 1 KiB.');",
+                  "}",
+                  "// 64 KiB: 64 vezes o declarado, sem pesar na tela do Runner.",
+                  "pm.variables.set('bigBody', 'x'.repeat(64 * 1024));"
                 ]
               }
             },
