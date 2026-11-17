@@ -15,3 +15,21 @@ data/local/*
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Function local e artefatos de deploy
+src/sas_service/local.settings.json
+.sas_service.zip
+.apim-policy.json
+.blob-service.json
+
+# Frontend: gerado pelo script, aponta para o APIM do seu ambiente
+web/config.js
+
+# Arquivos de teste grandes
+*.bin

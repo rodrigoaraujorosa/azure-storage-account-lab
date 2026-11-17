@@ -1,0 +1,38 @@
+<!--
+  Policy da API "upload-sas" (escopo: API).
+  Os scripts trocam __WEB_ORIGIN__ e __LOCAL_ORIGIN__; no Portal, troque à mão.
+  {{sas-function-key}} é um named value (secreto) com a function key da Function.
+-->
+<policies>
+    <inbound>
+        <cors allow-credentials="false">
+            <allowed-origins>
+                <origin>__WEB_ORIGIN__</origin>
+                <origin>__LOCAL_ORIGIN__</origin>
+            </allowed-origins>
+            <allowed-methods preflight-result-max-age="600">
+                <method>POST</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>Content-Type</header>
+            </allowed-headers>
+        </cors>
+        <base />
+        <!-- O pedido de SAS é um JSON pequeno; corpo grande aqui é engano ou abuso. -->
+        <check-header name="Content-Type" failed-check-httpcode="415" failed-check-error-message="Use application/json" ignore-case="true">
+            <value>application/json</value>
+        </check-header>
+        <set-header name="x-functions-key" exists-action="override">
+            <value>{{sas-function-key}}</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

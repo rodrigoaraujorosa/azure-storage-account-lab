@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upload direto · Storage Lab</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="card">
+      <header>
+        <p class="eyebrow">azure-storage-account-lab</p>
+        <h1>Upload direto para o Storage</h1>
+        <p class="lead">
+          O navegador pede uma SAS ao microserviço (via APIM) e envia o arquivo direto ao
+          Blob Storage, em blocos. O arquivo não passa pelo APIM.
+        </p>
+      </header>
+
+      <label class="drop" id="drop">
+        <input type="file" id="file" />
+        <span id="file-label">Escolha um arquivo (100–400 MB) ou arraste para cá</span>
+      </label>
+
+      <div class="options">
+        <label>Bloco <select id="block-size">
+          <option value="4">4 MiB</option>
+          <option value="8" selected>8 MiB</option>
+          <option value="16">16 MiB</option>
+          <option value="32">32 MiB</option>
+        </select></label>
+        <label>Paralelos <select id="parallel">
+          <option>1</option><option>2</option><option selected>4</option><option>8</option>
+        </select></label>
+      </div>
+
+      <button id="upload" disabled>Enviar</button>
+
+      <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+      <p id="status" role="status">Nenhum arquivo selecionado.</p>
+
+      <dl id="stats" class="stats"></dl>
+
+      <details>
+        <summary>Log</summary>
+        <ol id="log"></ol>
+      </details>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+[project]
+name = "azure-storage-account-lab"
+version = "0.1.0"
+description = "Lab: upload de arquivos grandes direto no Azure Storage com SAS emitida atrás do APIM"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src/sas_service"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["function_app", "sas_issuer", "sas_logic"]
