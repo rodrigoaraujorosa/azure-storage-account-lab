@@ -281,7 +281,7 @@ Não executados, por não serem necessários para o cenário: usar a SAS de um b
 
 Todos os serviços estão em tiers de consumo: APIM Consumption e Functions Flex Consumption têm cota gratuita mensal, e o Storage cobra por GB armazenado e por operação. O custo esperado do lab é de centavos. Para ver o custo real: *Cost Management → Cost analysis*, filtrando pela tag `repo = azure-storage-account-lab`.
 
-> **Recursos apagados em 17/11/2026** com `scripts/cleanup.sh`: resource group `rg-azure-storage-account-lab` excluído e APIM purgado do soft delete. Ficou fora o workspace padrão `DefaultWorkspace-<assinatura>-EUS2`, compartilhado com a assinatura.
+> **Recursos apagados em 17/11/2026** com `scripts/cleanup.sh`: resource group `rg-azure-storage-account-lab` excluído e APIM purgado do soft delete. Depois, à mão: o workspace padrão `DefaultWorkspace-<assinatura>-EUS2` (criado no deploy e sem outro recurso ligado) apagado de vez com `az monitor log-analytics workspace delete --force`, e o resource group `DefaultResourceGroup-EUS2`, que ficou vazio, também excluído. Nenhum recurso do lab restou na assinatura.
 >
 > **Custo:** no momento da limpeza, o Cost Management ainda não mostrava custo do lab (os dados chegam com 8–24 h de atraso). Pelo uso (tiers de consumo, ~1,5 GiB guardado por um dia e poucas centenas de operações), o esperado são centavos, cobertos pelos créditos da assinatura Azure for Students. Para conferir o valor real: *Cost Management → Cost analysis*, de 16 a 17/11/2026, filtrando a tag `repo = azure-storage-account-lab`.
 
