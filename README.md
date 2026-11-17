@@ -127,7 +127,7 @@ No fim, o script mostra a URL do frontend.
 
 ### Publicar pelo Portal Azure
 
-O passo a passo, com os mesmos recursos e configurações, está em **[docs/portal.md](docs/portal.md)**.
+Para criar tudo sem o Azure CLI, siga o guia **[docs/portal.md](docs/portal.md)**: mesmos recursos e configurações dos scripts, do resource group à limpeza, incluindo como testar com o navegador e o Postman.
 
 ### Testar
 
