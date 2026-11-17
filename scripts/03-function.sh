@@ -46,9 +46,9 @@ command -v zip >/dev/null || { echo "Ferramenta ausente: zip" >&2; exit 1; }
 log "Publicando o código (zip deploy com build remoto)"
 ZIP="$ROOT/.sas_service.zip"
 rm -f "$ZIP"
-(cd "$ROOT/src/sas_service" && zip -qr "$ZIP" . -x '__pycache__/*' '*/__pycache__/*' 'local.settings*.json' '.funcignore')
-az functionapp deployment source config-zip -g "$RG" -n "$FUNC_APP" --src "$ZIP" --build-remote true -o none
+(cd "$ROOT/src/sas_service" && zip -qr "$(az_path "$ZIP")" . -x '__pycache__/*' '*/__pycache__/*' 'local.settings*.json' '.funcignore')
+az functionapp deployment source config-zip -g "$RG" -n "$FUNC_APP" --src "$(az_path "$ZIP")" --build-remote true -o none
 rm -f "$ZIP"
 
-log "Pronto. Host: $(az functionapp show -g "$RG" -n "$FUNC_APP" --query defaultHostName -o tsv)"
+log "Pronto. Host: $(func_host)"
 echo "Os papéis podem levar alguns minutos para valer. Se a SAS falhar com 403 logo no início, espere e tente de novo."

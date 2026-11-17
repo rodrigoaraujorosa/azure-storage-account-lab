@@ -61,6 +61,16 @@ if [[ -n "${AZURE_SUBSCRIPTION_ID:-}" ]]; then
 fi
 SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
 
+# Host da Function (ex.: func-...azurewebsites.net). Lido do recurso ARM: o formato de
+# `az functionapp show` muda entre versões do CLI e, no Flex Consumption, pode vir vazio.
+func_host() {
+  az resource show -g "$RG" -n "$FUNC_APP" --resource-type Microsoft.Web/sites \
+    --query properties.defaultHostName -o tsv
+}
+
+# Caminho de arquivo para o az: no Git Bash ele é Python para Windows e não entende /c/...
+az_path() { if command -v cygpath >/dev/null; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
+
 log() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[aviso] %s\033[0m\n' "$*" >&2; }
 

@@ -13,8 +13,8 @@ window.APP_CONFIG = {
 EOF
 
 log "Enviando web/ para o contêiner \$web de $ST_WEB"
-az storage blob upload-batch --account-name "$ST_WEB" --auth-mode key \
-  --destination '$web' --source "$ROOT/web" --overwrite \
+az storage blob upload-batch --account-name "$ST_WEB" --auth-mode key --only-show-errors \
+  --destination '$web' --source "$(az_path "$ROOT/web")" --overwrite \
   --content-cache-control "no-cache" -o none
 
 log "Pronto. Abra: $(web_origin)"

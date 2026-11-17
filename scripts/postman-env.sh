@@ -5,7 +5,7 @@ source "$(dirname "$0")/config.sh"
 
 OUT="$ROOT/postman/azure-storage-account-lab.postman_environment.json"
 GATEWAY="$(az apim show -g "$RG" -n "$APIM" --query gatewayUrl -o tsv)"
-FUNC_HOST="$(az functionapp show -g "$RG" -n "$FUNC_APP" --query defaultHostName -o tsv)"
+FUNC_HOST="$(func_host)"
 
 jq -n \
   --arg apim "$GATEWAY/$APIM_API_PATH" \

@@ -30,13 +30,14 @@ else
     --display-name "$APIM_NV_FUNCTION_KEY" --value "$FUNC_KEY" --secret true -o none
 fi
 
-FUNC_HOST="$(az functionapp show -g "$RG" -n "$FUNC_APP" --query defaultHostName -o tsv)"
+FUNC_HOST="$(func_host)"
+[[ -n "$FUNC_HOST" ]] || { echo "Não consegui ler o host de $FUNC_APP." >&2; exit 1; }
 
 log "API $APIM_API_ID em /$APIM_API_PATH -> https://$FUNC_HOST/api"
 # Sem subscription key: ela ficaria exposta no navegador. Ver "Resultado" no README.
 az apim api create -g "$RG" --service-name "$APIM" --api-id "$APIM_API_ID" \
   --path "$APIM_API_PATH" --display-name "Upload SAS" --protocols https \
-  --service-url "https://$FUNC_HOST/api" --subscription-required false -o none
+  --service-url "https://$FUNC_HOST/api" --subscription-required false --only-show-errors -o none
 
 az apim api operation create -g "$RG" --service-name "$APIM" --api-id "$APIM_API_ID" \
   --operation-id create-sas --display-name "Gerar SAS de upload" \
@@ -53,7 +54,7 @@ sed -e "s#__WEB_ORIGIN__#$WEB_ORIGIN#" -e "s#__LOCAL_ORIGIN__#$LOCAL_ORIGIN#" \
   jq -Rs '{properties: {format: "rawxml", value: .}}' >"$ROOT/.apim-policy.json"
 az rest --method put \
   --url "https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/apis/$APIM_API_ID/policies/policy?api-version=2022-08-01" \
-  --body @"$ROOT/.apim-policy.json" -o none
+  --body @"$(az_path "$ROOT/.apim-policy.json")" -o none >/dev/null
 rm -f "$ROOT/.apim-policy.json"
 
 log "Pronto. Endpoint: $(az apim show -g "$RG" -n "$APIM" --query gatewayUrl -o tsv)/$APIM_API_PATH/sas"

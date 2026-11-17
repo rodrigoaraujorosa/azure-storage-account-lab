@@ -1,6 +1,6 @@
 <!--
   Policy da API "upload-sas" (escopo: API).
-  Os scripts trocam __WEB_ORIGIN__ e __LOCAL_ORIGIN__; no Portal, troque à mão.
+  Os scripts trocam os dois marcadores de origem (WEB_ORIGIN e LOCAL_ORIGIN); no Portal, troque à mão.
   {{sas-function-key}} é um named value (secreto) com a function key da Function.
 -->
 <policies>

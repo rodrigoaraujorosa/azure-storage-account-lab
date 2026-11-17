@@ -81,6 +81,8 @@ Todos levam a tag `repo=azure-storage-account-lab`. Os nomes de Storage não ace
 
 - Assinatura Azure com permissão de criar recursos e **atribuir papéis** (Owner ou User Access Administrator no resource group).
 - **Azure Cloud Shell (Bash)**, o caminho mais simples: já tem `az`, `jq`, `zip` e `curl` e já está logado. Localmente, também funciona com Git Bash, WSL, Linux ou macOS, com [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), `jq` e `zip` instalados e `az login` feito.
+- **Git Bash no Windows:** testado. Os scripts convertem os caminhos de arquivo para o formato do Windows e removem o `\r` da saída do `az`. Se o `az` não for encontrado logo depois de instalar, feche e reabra o VS Code ou o terminal.
+- **Assinaturas com regiões restritas** (ex.: Azure for Students): veja as regiões permitidas com `az policy assignment list --query "[].parameters.listOfAllowedLocations.value"` e escolha uma delas em `AZURE_LOCATION`. Na primeira execução, o `01-resource-group.sh` registra os resource providers que faltam.
 
 ### Publicar com o Azure CLI
 
@@ -217,6 +219,26 @@ bash scripts/cleanup.sh
 ├── docs/portal.md           # passo a passo pelo Portal Azure
 └── data/local/              # arquivos de teste (ignorados pelo git)
 ```
+
+## 📖 Glossário
+
+| Termo | O que é |
+| --- | --- |
+| APIM | Azure API Management: gateway que publica APIs e aplica policies (CORS, autenticação, limites) antes do backend |
+| Blob | Arquivo guardado no Azure Blob Storage, dentro de um contêiner |
+| Bloco (*block*) | Pedaço de um blob enviado com Put Block; o Put Block List junta os blocos, na ordem, no blob final |
+| CORS | Cross-Origin Resource Sharing: regras que dizem de quais sites o navegador pode chamar um serviço |
+| Entra ID | Microsoft Entra ID, o serviço de identidade da Microsoft (antigo Azure Active Directory) |
+| Flex Consumption | Plano do Azure Functions cobrado por uso, que escala até zero |
+| Function key | Chave exigida para chamar uma Function com nível de autorização `function`; aqui só o APIM a conhece |
+| Identidade gerenciada (*managed identity*) | Identidade do Entra ID criada para um recurso do Azure, sem senha nem chave para guardar |
+| Named value | Variável do APIM usada nas policies; pode ser secreta, como a function key |
+| Preflight | Requisição `OPTIONS` que o navegador faz antes da chamada real para conferir o CORS |
+| Resource group | Grupo de recursos do Azure; apagar o grupo apaga tudo dentro dele |
+| SAS | Shared Access Signature: URL assinada que dá acesso temporário e limitado a um recurso do Storage |
+| Shared key | Chave de acesso da conta de armazenamento, que dá acesso total; neste lab fica desabilitada |
+| Static website | Recurso do Storage que serve arquivos do contêiner `$web` como site estático |
+| User delegation SAS | SAS assinada com uma chave obtida via Entra ID (*user delegation key*), em vez da shared key |
 
 ## 📄 Licença
 
