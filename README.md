@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/rodrigoaraujorosa/azure-storage-account-lab/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/rodrigoaraujorosa/azure-storage-account-lab/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
-  <img src="https://img.shields.io/badge/status-experimental-C8962E?style=flat-square" alt="Status: experimental">
+  <img src="https://img.shields.io/badge/status-arquivado-93A29B?style=flat-square" alt="Status: arquivado">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/rodrigoaraujorosa/azure-storage-account-lab?style=flat-square&color=1E5C48&label=licen%C3%A7a" alt="Licença: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.12-1E5C48?style=flat-square&logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/javascript-vanilla-1E5C48?style=flat-square&logo=javascript&logoColor=white" alt="JavaScript sem framework">
@@ -281,8 +281,9 @@ Não executados, por não serem necessários para o cenário: usar a SAS de um b
 
 Todos os serviços estão em tiers de consumo: APIM Consumption e Functions Flex Consumption têm cota gratuita mensal, e o Storage cobra por GB armazenado e por operação. O custo esperado do lab é de centavos. Para ver o custo real: *Cost Management → Cost analysis*, filtrando pela tag `repo = azure-storage-account-lab`.
 
-> Custo total: a registrar.
-> Recursos apagados em: a registrar.
+> **Recursos apagados em 17/11/2026** com `scripts/cleanup.sh`: resource group `rg-azure-storage-account-lab` excluído e APIM purgado do soft delete. Ficou fora o workspace padrão `DefaultWorkspace-<assinatura>-EUS2`, compartilhado com a assinatura.
+>
+> **Custo:** no momento da limpeza, o Cost Management ainda não mostrava custo do lab (os dados chegam com 8–24 h de atraso). Pelo uso (tiers de consumo, ~1,5 GiB guardado por um dia e poucas centenas de operações), o esperado são centavos, cobertos pelos créditos da assinatura Azure for Students. Para conferir o valor real: *Cost Management → Cost analysis*, de 16 a 17/11/2026, filtrando a tag `repo = azure-storage-account-lab`.
 
 O Application Insights da Function grava os logs no workspace padrão `DefaultWorkspace-<assinatura>-EUS2`, que o Azure cria no resource group `DefaultResourceGroup-EUS2`, fora do lab. Ele é compartilhado com outros recursos da assinatura e cobra por GB ingerido (o volume deste lab é mínimo), por isso o `cleanup.sh` não o apaga. Se a assinatura não tiver mais nada usando esse workspace, apague-o à mão.
 
