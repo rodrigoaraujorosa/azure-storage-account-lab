@@ -16,12 +16,12 @@ Upload de arquivos de 100 a 400 MB feito pelo navegador **direto no Azure Blob S
 
 ## 🎯 O que validar
 
-- [ ] O frontend obtém a SAS pelo caminho **Frontend → APIM → microserviço** em menos de 1 s.
-- [ ] O navegador envia 100–400 MB **direto ao Storage** em blocos (Put Block + Put Block List), com progresso e nova tentativa por bloco, sem nenhum byte do arquivo passar pelo APIM.
-- [ ] A SAS é uma **user delegation SAS** assinada com a managed identity da Function: a conta de upload fica com **shared key desabilitada** e não existe chave da conta em lugar nenhum.
-- [ ] A SAS vale para **um único blob**, só com `create` + `write`, por 15 minutos: não lê, não lista, não apaga e não serve para outro nome.
-- [ ] O CORS da conta de upload aceita só a origem do frontend, e o do APIM também.
-- [ ] Qual combinação de tamanho de bloco e paralelismo dá a melhor vazão, e quanto tempo levam 100, 200 e 400 MB.
+- [x] O frontend obtém a SAS pelo caminho **Frontend → APIM → microserviço** em menos de 1 s. *Com a Function aquecida, sim; depois de alguns minutos parada, o cold start leva 0,9–1,9 s. Ver [Resultado](#-resultado).*
+- [x] O navegador envia 100–400 MB **direto ao Storage** em blocos (Put Block + Put Block List), com progresso e nova tentativa por bloco, sem nenhum byte do arquivo passar pelo APIM.
+- [x] A SAS é uma **user delegation SAS** assinada com a managed identity da Function: a conta de upload fica com **shared key desabilitada** e não existe chave da conta em lugar nenhum.
+- [ ] A SAS vale para **um único blob**, só com `create` + `write`, por 15 minutos: não lê, não lista, não apaga e não serve para outro nome. *Leitura negada (403) confirmada; exclusão e outros nomes ficam para o teste no Postman.*
+- [x] O CORS da conta de upload aceita só a origem do frontend, e o do APIM também.
+- [ ] Qual combinação de tamanho de bloco e paralelismo dá a melhor vazão, e quanto tempo levam 100, 200 e 400 MB. *Tempos medidos; a comparação entre configurações ainda falta.*
 - [ ] O que acontece quando a SAS expira no meio do upload.
 - [ ] Limite de tamanho: o microserviço recusa o pedido acima de `MAX_UPLOAD_MB`, mas a SAS em si não limita o tamanho. Confirmar e registrar a mitigação.
 
@@ -179,20 +179,60 @@ uv run --group dev ruff check . && uv run --group dev ruff format --check .
 
 ## ✅ Resultado
 
-> A preencher ao final do lab.
+Execução de 17/11/2026 em `eastus2` (assinatura Azure for Students), com o frontend publicado no static website e o upload feito de uma conexão residencial no Brasil.
 
-| Arquivo | Bloco | Paralelos | SAS (APIM) | Upload | Vazão |
-| --- | --- | --- | --- | --- | --- |
-| 100 MB | 8 MiB | 4 | | | |
-| 200 MB | 8 MiB | 4 | | | |
-| 400 MB | 8 MiB | 4 | | | |
-| 400 MB | 16 MiB | 8 | | | |
+### Uploads pela interface web
 
-**O que funcionou:**
+| Arquivo | Blocos | SAS (Function) | Upload | Vazão |
+| --- | --- | --- | --- | --- |
+| 100 MiB | 8 MiB × 4 | 1.225 ms (cold start) | ~44 s | ~2,3 MiB/s |
+| 200 MiB | 8 MiB × 4 | 14 ms | ~98 s | ~2,0 MiB/s |
+| 400 MiB | 8 MiB × 4 | 896 ms (cold start) | ~234 s | ~1,7 MiB/s |
+| 400 MiB | 8 MiB × 4 | 1.227 ms (cold start) | ~209 s | ~1,9 MiB/s |
 
-**O que não funcionou:**
+Como foi medido: **SAS (Function)** é a duração da requisição no Application Insights, sem o tempo do APIM e da rede. **Upload** vai da emissão da SAS (log `SAS emitida`) até o commit do blob (`creationTime`), com precisão de ~1 s. Os quatro blobs chegaram com o tamanho exato do arquivo. Blocos: a configuração padrão da tela.
 
-**Aprendizados:**
+### Testes de segurança e integração
+
+| Teste | Esperado | Obtido |
+| --- | --- | --- |
+| Pedido de SAS pelo APIM | 201 | ✅ 201 |
+| Upload de 1 MiB com a SAS (Put Blob) | 201 | ✅ 201 |
+| Ler o blob com a mesma SAS | 403 | ✅ 403 |
+| Pedido acima de `MAX_UPLOAD_MB` | 400 | ✅ 400 |
+| Conta de upload com `allowSharedKeyAccess` | `false` | ✅ `false` |
+| Function chamada direto, sem a function key | 401 | ✅ 401 |
+| Preflight no APIM com a origem do frontend | `Access-Control-Allow-Origin` | ✅ |
+| Preflight no APIM com outra origem | sem `Access-Control-Allow-Origin` | ✅ |
+| Preflight no Storage com a origem do frontend | 200 | ✅ 200 |
+| Preflight no Storage com outra origem | 403 | ✅ 403 |
+
+**O que funcionou**
+
+- O fluxo completo: o APIM trafega só o JSON da SAS, e 100–400 MiB vão do navegador direto ao Storage, em blocos.
+- User delegation SAS com a managed identity, numa conta com shared key desabilitada: não existe chave da conta no lab.
+- Permissões mínimas: *Storage Blob Delegator* na conta e *Storage Blob Data Contributor* só no contêiner bastaram para emitir a SAS.
+- A SAS emitida e não usada não deixa rastro: dois pedidos do smoke test que falharam antes do upload não criaram nenhum blob.
+
+**O que não funcionou ou ficou abaixo do esperado**
+
+- **Cold start da Function:** com a instância aquecida, a SAS sai em 9–14 ms; depois de 2–5 minutos sem uso, o Flex Consumption volta a zero e a primeira chamada leva 0,9–1,9 s. Para ficar sempre abaixo de 1 s, seria preciso configurar instâncias *always ready* no Flex Consumption, que têm custo fixo.
+- **Vazão:** ficou em ~1,7–2,3 MiB/s (14–19 Mbit/s), provavelmente o limite de upload da conexão de origem, e não do Storage. A comparação entre tamanhos de bloco e paralelismo ainda falta.
+- **Deploy no Git Bash do Windows:** `az`, `zip` e `curl` são executáveis Windows e não entendem caminhos `/c/...` quando a conversão do MSYS está desligada. Corrigido nos scripts com `cygpath -w`.
+- **`az functionapp show` no Flex Consumption** (CLI 2.93) não traz `defaultHostName` no topo da resposta. Corrigido lendo o host do recurso ARM.
+
+**Aprendizados**
+
+- Assinatura nova (Azure for Students) vem sem resource providers registrados e com uma policy de regiões permitidas (`brazilsouth`, `centralus`, `eastus2`, `canadacentral`, `southafricanorth`).
+- Gerar a user delegation key é uma ação da **conta**: o papel que permite isso (*Storage Blob Delegator*) precisa estar no escopo da conta, não do contêiner.
+- Com shared key desabilitada, CORS e soft delete são configurados pelo plano de controle (ARM, `az rest` em `blobServices/default`), porque `az storage cors` usa a chave.
+- O `az functionapp create` liga o Application Insights a um workspace padrão (`DefaultWorkspace-<assinatura>-EUS2`) num resource group **fora do lab** (`DefaultResourceGroup-EUS2`). Ver "Custos e limpeza".
+- Para medir sem depender da tela do navegador, os logs `SAS emitida` no Application Insights, cruzados com o `creationTime` do blob, dão a duração de cada upload.
+
+**Ainda falta**
+
+- Testes da collection do Postman: exclusão com a SAS, CORS e a confirmação de que a SAS não limita o tamanho enviado.
+- Comparar tamanhos de bloco e paralelismo (ex.: 16 MiB × 8) e testar a expiração da SAS no meio do upload.
 
 ## 💸 Custos e limpeza
 
@@ -200,6 +240,8 @@ Todos os serviços estão em tiers de consumo: APIM Consumption e Functions Flex
 
 > Custo total: a registrar.
 > Recursos apagados em: a registrar.
+
+O Application Insights da Function grava os logs no workspace padrão `DefaultWorkspace-<assinatura>-EUS2`, que o Azure cria no resource group `DefaultResourceGroup-EUS2`, fora do lab. Ele é compartilhado com outros recursos da assinatura e cobra por GB ingerido (o volume deste lab é mínimo), por isso o `cleanup.sh` não o apaga. Se a assinatura não tiver mais nada usando esse workspace, apague-o à mão.
 
 Para apagar tudo (pede confirmação e também purga o APIM do soft delete, liberando o nome):
 
