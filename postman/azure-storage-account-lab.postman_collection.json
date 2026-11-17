@@ -23,11 +23,11 @@
     },
     {
       "key": "fileName",
-      "value": "teste-10mb.bin"
+      "value": "teste-400mb.bin"
     },
     {
       "key": "fileSize",
-      "value": "10485760"
+      "value": "419430400"
     },
     {
       "key": "contentType",
@@ -212,7 +212,7 @@
                 "{{uploadUrl}}"
               ]
             },
-            "description": "Envia o arquivo inteiro num único PUT. **Escolha o arquivo na aba Body (binary).**\n\nUse um arquivo pequeno (ex.: 10 MiB) e ajuste `fileName` e `fileSize`. O Postman recusou o arquivo de 400 MiB; os arquivos de 100–400 MiB são testados pelo frontend, que envia em blocos."
+            "description": "Envia o arquivo inteiro num único PUT. **Escolha o arquivo na aba Body (binary).**\n\nAjuste `fileName` e `fileSize` (bytes) para o arquivo escolhido. O Postman envia num único PUT; 400 MiB funcionou."
           }
         },
         {
